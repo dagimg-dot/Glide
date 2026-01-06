@@ -83,21 +83,42 @@ class ClipboardPanelView(
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
-        // Set background with rounded left corners
+        // Set background with rounded left corners only (panel slides from right edge)
+        val cornerRadiusPx = 48f
         background =
             GradientDrawable().apply {
-                setColor(Color.parseColor("#1A1A1A"))
+                // Semi-transparent dark background
+                setColor(Color.parseColor("#EE121212"))
                 cornerRadii =
                     floatArrayOf(
-                        32f,
-                        32f, // Top-left
+                        cornerRadiusPx,
+                        cornerRadiusPx, // Top-left
                         0f,
-                        0f, // Top-right
+                        0f, // Top-right (flush with edge)
                         0f,
-                        0f, // Bottom-right
-                        32f,
-                        32f, // Bottom-left
+                        0f, // Bottom-right (flush with edge)
+                        cornerRadiusPx,
+                        cornerRadiusPx, // Bottom-left
                     )
+            }
+
+        // Clip to the rounded corners
+        clipToOutline = true
+        outlineProvider =
+            object : android.view.ViewOutlineProvider() {
+                override fun getOutline(
+                    view: android.view.View,
+                    outline: android.graphics.Outline,
+                ) {
+                    // Only round left corners
+                    outline.setRoundRect(
+                        0,
+                        0,
+                        view.width + cornerRadiusPx.toInt(),
+                        view.height,
+                        cornerRadiusPx,
+                    )
+                }
             }
 
         // Setup lifecycle for Compose
@@ -118,6 +139,32 @@ class ClipboardPanelView(
                     )
                 }
             }
+
+        // Add gesture detector for swipe to close
+        val gestureDetector =
+            android.view.GestureDetector(
+                context,
+                object : android.view.GestureDetector.SimpleOnGestureListener() {
+                    override fun onFling(
+                        e1: MotionEvent?,
+                        e2: MotionEvent,
+                        velocityX: Float,
+                        velocityY: Float,
+                    ): Boolean {
+                        if (e1 != null && e2.rawX > e1.rawX && velocityX > 1000) {
+                            onClose()
+                            return true
+                        }
+                        return false
+                    }
+                },
+            )
+
+        composeView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false // Let Compose handle other touches
+        }
+
         addView(composeView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
@@ -230,7 +277,7 @@ private fun ClipboardPanelContent(
         ) {
             Text(
                 text = "Clipboard",
-                fontSize = 24.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = androidx.compose.ui.graphics.Color.White,
             )
