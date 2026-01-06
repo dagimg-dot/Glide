@@ -103,14 +103,31 @@ class EdgeHandleView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+
+        val width = width.toFloat()
+        val height = height.toFloat()
+        val path = android.graphics.Path()
+
+        // Start top-right (0 radius)
+        path.moveTo(width, 0f)
+        // Top-left (rounded)
+        path.lineTo(cornerRadius, 0f)
+        path.quadTo(0f, 0f, 0f, cornerRadius)
+        // Bottom-left (rounded)
+        path.lineTo(0f, height - cornerRadius)
+        path.quadTo(0f, height, cornerRadius, height)
+        // Bottom-right (0 radius)
+        path.lineTo(width, height)
+        path.lineTo(width, 0f)
+        path.close()
+
         val currentPaint =
             when {
                 isDragging -> dragPaint
                 isPressed -> highlightPaint
                 else -> paint
             }
-        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, currentPaint)
+        canvas.drawPath(path, currentPaint)
     }
 
     @SuppressLint("ClickableViewAccessibility")

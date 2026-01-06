@@ -246,7 +246,19 @@ class ClipboardService : Service() {
             }
 
         // 2. Create Panel
-        clipboardPanel = ClipboardPanelView(this, repository) { hidePanel() }
+        clipboardPanel =
+            ClipboardPanelView(
+                context = this,
+                repository = repository,
+                onSettingsClick = {
+                    // Open Settings (Main Activity)
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    hidePanel()
+                },
+                onClose = { hidePanel() },
+            )
 
         // REQUIRED for Compose in a Service: Attach Lifecycle and SavedStateRegistry to the container
         // Since we are not in an Activity/Fragment, we must provide these manually.

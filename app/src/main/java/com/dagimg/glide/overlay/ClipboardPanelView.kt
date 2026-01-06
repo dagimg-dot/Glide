@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -65,6 +66,7 @@ import java.util.concurrent.TimeUnit
 class ClipboardPanelView(
     context: Context,
     private val repository: ClipboardRepository,
+    private val onSettingsClick: () -> Unit,
     private val onClose: () -> Unit,
 ) : FrameLayout(context),
     LifecycleOwner,
@@ -135,7 +137,7 @@ class ClipboardPanelView(
                         onItemPin = { item -> togglePin(item) },
                         onItemDelete = { item -> deleteItem(item) },
                         onClearAll = { clearAll() },
-                        onClose = onClose,
+                        onSettingsClick = onSettingsClick,
                     )
                 }
             }
@@ -248,7 +250,7 @@ private fun ClipboardPanelContent(
     onItemPin: (ClipboardEntity) -> Unit,
     onItemDelete: (ClipboardEntity) -> Unit,
     onClearAll: () -> Unit,
-    onClose: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     val items by repository.getAllItems().collectAsState(initial = emptyList())
 
@@ -292,11 +294,11 @@ private fun ClipboardPanelContent(
                     )
                 }
 
-                // Close button
-                IconButton(onClick = onClose) {
+                // Settings button
+                IconButton(onClick = onSettingsClick) {
                     Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close",
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
                         tint = androidx.compose.ui.graphics.Color.White,
                     )
                 }
