@@ -136,7 +136,6 @@ class ClipboardPanelView(
                         onItemClick = { item -> copyToClipboard(item) },
                         onItemPin = { item -> togglePin(item) },
                         onItemDelete = { item -> deleteItem(item) },
-                        onClearAll = { clearAll() },
                         onSettingsClick = onSettingsClick,
                     )
                 }
@@ -220,13 +219,6 @@ class ClipboardPanelView(
         }
     }
 
-    private fun clearAll() {
-        performHapticFeedback()
-        kotlinx.coroutines.GlobalScope.launch {
-            repository.clearAllUnpinned()
-        }
-    }
-
     private fun performHapticFeedback() {
         vibrator?.let {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -249,7 +241,6 @@ private fun ClipboardPanelContent(
     onItemClick: (ClipboardEntity) -> Unit,
     onItemPin: (ClipboardEntity) -> Unit,
     onItemDelete: (ClipboardEntity) -> Unit,
-    onClearAll: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
     val items by repository.getAllItems().collectAsState(initial = emptyList())
@@ -285,21 +276,13 @@ private fun ClipboardPanelContent(
             )
 
             Row {
-                // Clear all button
-                IconButton(onClick = onClearAll) {
-                    Icon(
-                        Icons.Default.DeleteSweep,
-                        contentDescription = "Clear all",
-                        tint = androidx.compose.ui.graphics.Color.Gray,
-                    )
-                }
-
                 // Settings button
                 IconButton(onClick = onSettingsClick) {
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = "Settings",
                         tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

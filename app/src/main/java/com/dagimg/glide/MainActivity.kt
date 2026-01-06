@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,7 @@ import androidx.core.content.ContextCompat
 import com.dagimg.glide.service.ClipboardService
 import com.dagimg.glide.service.GlideAccessibilityService
 import com.dagimg.glide.ui.theme.GlideTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var isServiceEnabled by mutableStateOf(false)
@@ -56,9 +58,15 @@ class MainActivity : ComponentActivity() {
             checkPermissions()
         }
 
+    private lateinit var repository: com.dagimg.glide.data.ClipboardRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        repository =
+            com.dagimg.glide.data
+                .ClipboardRepository(this)
 
         // Load saved state
         val prefs = getSharedPreferences("glide_prefs", Context.MODE_PRIVATE)
@@ -70,16 +78,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    MainScreen(
-                        isEnabled = isServiceEnabled,
-                        hasOverlayPermission = hasOverlayPermission,
-                        hasAccessibilityPermission = hasAccessibilityPermission,
-                        hasNotificationPermission = hasNotificationPermission,
-                        onToggle = { toggleService() },
-                        onRequestOverlayPermission = { requestOverlayPermission() },
-                        onRequestAccessibilityPermission = { openAccessibilitySettings() },
-                        onRequestNotificationPermission = { requestNotificationPermission() },
-                    )
+                    val scope = rememberCoroutineScope()
+                    val snackbarHostState = remember { SnackbarHostState() }
+
+                    Scaffold(
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
+                    ) { paddingValues ->
+                        Box(modifier = Modifier.padding(paddingValues)) {
+                            MainScreen(
+                                isEnabled = isServiceEnabled,
+                                hasOverlayPermission = hasOverlayPermission,
+                                hasAccessibilityPermission = hasAccessibilityPermission,
+                                hasNotificationPermission = hasNotificationPermission,
+                                onToggle = { toggleService() },
+                                onRequestOverlayPermission = { requestOverlayPermission() },
+                                onRequestAccessibilityPermission = { openAccessibilitySettings() },
+                                onRequestNotificationPermission = { requestNotificationPermission() },
+                                onClearHistory = {
+                                    scope.launch {
+                                        repository.clearAllUnpinned()
+                                        snackbarHostState.showSnackbar("History cleared")
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -161,6 +184,7 @@ fun MainScreen(
     onRequestOverlayPermission: () -> Unit,
     onRequestAccessibilityPermission: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
+    onClearHistory: () -> Unit,
 ) {
     val allPermissionsGranted = hasOverlayPermission && hasAccessibilityPermission
 
@@ -284,6 +308,22 @@ fun MainScreen(
         }
 
         Spacer(modifier = Modifier.weight(1f))
+
+        // Clear History
+        TextButton(
+            onClick = onClearHistory,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors =
+                ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFFEF4444),
+                ),
+        ) {
+            Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Clear Clipboard History", fontSize = 16.sp)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Status indicator
         if (!allPermissionsGranted) {
