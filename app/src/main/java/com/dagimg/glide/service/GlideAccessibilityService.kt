@@ -1,0 +1,126 @@
+package com.dagimg.glide.service
+
+import android.accessibilityservice.AccessibilityService
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+import android.view.accessibility.AccessibilityEvent
+import com.dagimg.glide.data.ClipboardRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
+/**
+ * Accessibility Service that provides reliable clipboard monitoring on Android 10+.
+ *
+ * On Android 10 and later, apps cannot read clipboard content in the background
+ * unless they are an Input Method Editor (IME) or have an active accessibility service.
+ * This service enables background clipboard monitoring.
+ */
+class GlideAccessibilityService : AccessibilityService() {
+    companion object {
+        private const val TAG = "GlideAccessibilityService"
+
+        @Volatile
+        private var instance: GlideAccessibilityService? = null
+
+        /**
+         * Check if the accessibility service is currently running
+         */
+        fun isRunning(): Boolean = instance != null
+
+        /**
+         * Get the current instance of the accessibility service
+         */
+        fun getInstance(): GlideAccessibilityService? = instance
+    }
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var repository: ClipboardRepository
+    private lateinit var clipboardManager: ClipboardManager
+
+    private var lastClipText: String? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "AccessibilityService onCreate")
+        instance = this
+
+        repository = ClipboardRepository(this)
+        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.d(TAG, "AccessibilityService connected")
+
+        // Start the main clipboard service if user has enabled it
+        val prefs = getSharedPreferences("glide_prefs", Context.MODE_PRIVATE)
+        val isEnabled = prefs.getBoolean("service_enabled", false)
+
+        if (isEnabled) {
+            ClipboardService.start(this)
+        }
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // We use this service primarily for clipboard access permissions
+        // The actual clipboard monitoring is done via ClipboardManager in ClipboardService
+
+        // However, we can also use window state changes to check clipboard
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) {
+            checkClipboard()
+        }
+    }
+
+    override fun onInterrupt() {
+        Log.d(TAG, "AccessibilityService interrupted")
+    }
+
+    override fun onDestroy() {
+        Log.d(TAG, "AccessibilityService onDestroy")
+        instance = null
+        serviceScope.cancel()
+        super.onDestroy()
+    }
+
+    /**
+     * Check clipboard for new content.
+     * This is called on window changes to capture clipboard updates.
+     */
+    private fun checkClipboard() {
+        try {
+            val clip = clipboardManager.primaryClip ?: return
+            if (clip.itemCount == 0) return
+
+            val item = clip.getItemAt(0)
+            val text = item.text?.toString()
+
+            // Only process if text changed
+            if (text != null && text.isNotBlank() && text != lastClipText) {
+                lastClipText = text
+
+                serviceScope.launch {
+                    repository.addText(text)
+                    Log.d(TAG, "Captured text via accessibility: ${text.take(50)}...")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking clipboard", e)
+        }
+    }
+
+    /**
+     * Open accessibility settings to enable this service
+     */
+    fun openAccessibilitySettings(context: Context) {
+        val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
+    }
+}
