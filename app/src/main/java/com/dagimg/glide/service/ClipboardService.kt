@@ -138,28 +138,38 @@ class ClipboardService : Service() {
         if (clip.itemCount == 0) return
 
         val item = clip.getItemAt(0)
+        val uri = item.uri
+        val text = item.text?.toString() ?: item.coerceToText(this@ClipboardService).toString()
+
+        if (repository.shouldIgnore(text, uri?.toString())) return
 
         serviceScope.launch {
-            val text = item.text?.toString()
-            if (!text.isNullOrBlank()) {
-                repository.addText(text)
-                Log.d(TAG, "Captured text: ${text.take(50)}...")
-                return@launch
+            // Priority 1: Check for Image URI
+            if (uri != null) {
+                val description = clip.description
+                val mimeType = contentResolver.getType(uri) ?: description.getMimeType(0)
+
+                if (mimeType?.startsWith("image/") == true) {
+                    try {
+                        contentResolver.openInputStream(uri)?.use { stream ->
+                            val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
+                            if (bitmap != null) {
+                                repository.addImage(bitmap, uri.toString())
+                                Log.d(TAG, "Captured image successfully")
+                                return@launch
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Silent fail for provider access errors (common for some browsers)
+                        Log.w(TAG, "Could not access image provider: ${e.message}")
+                    }
+                }
             }
 
-            val uri = item.uri
-            if (uri != null) {
-                try {
-                    contentResolver.openInputStream(uri)?.use { stream ->
-                        val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                        if (bitmap != null) {
-                            repository.addImage(bitmap)
-                            Log.d(TAG, "Captured image from URI")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to capture image", e)
-                }
+            // Priority 2: Text
+            if (text.isNotBlank()) {
+                repository.addText(text)
+                Log.d(TAG, "Captured text: ${text.take(50)}...")
             }
         }
     }
@@ -303,7 +313,7 @@ class ClipboardService : Service() {
                     // REMOVED FLAG_NOT_FOCUSABLE so we can catch back press if needed later,
                     // but for now strictly for touch interception.
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // Allow touches to pass through if we aren't handling them? Actually standard behavior is fine.
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // Allow touches to pass through
                     PixelFormat.TRANSLUCENT,
                 )
 

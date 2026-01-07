@@ -19,11 +19,11 @@ abstract class ClipboardDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
-        private var INSTANCE: ClipboardDatabase? = null
+        private var instance: ClipboardDatabase? = null
 
         fun getInstance(context: Context): ClipboardDatabase =
-            INSTANCE ?: synchronized(this) {
-                val instance =
+            instance ?: synchronized(this) {
+                val newInstance =
                     Room
                         .databaseBuilder(
                             context.applicationContext,
@@ -31,8 +31,8 @@ abstract class ClipboardDatabase : RoomDatabase() {
                             "glide_clipboard.db",
                         ).fallbackToDestructiveMigration()
                         .build()
-                INSTANCE = instance
-                instance
+                instance = newInstance
+                newInstance
             }
     }
 }

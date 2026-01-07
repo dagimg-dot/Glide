@@ -89,29 +89,50 @@ class GlideAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    /**
-     * Check clipboard for new content.
-     * This is called on window changes to capture clipboard updates.
-     */
     private fun checkClipboard() {
         try {
             val clip = clipboardManager.primaryClip ?: return
             if (clip.itemCount == 0) return
 
             val item = clip.getItemAt(0)
-            val text = item.text?.toString()
+            val uri = item.uri
+            val text = item.text?.toString() ?: item.coerceToText(this).toString()
 
-            // Only process if text changed
-            if (text != null && text.isNotBlank() && text != lastClipText) {
+            if (repository.shouldIgnore(text, uri?.toString())) return
+
+            // Priority 1: Check for Image URI
+            if (uri != null) {
+                val mimeType = contentResolver.getType(uri) ?: clip.description.getMimeType(0)
+                if (mimeType?.startsWith("image/") == true) {
+                    serviceScope.launch {
+                        try {
+                            contentResolver.openInputStream(uri)?.use { stream ->
+                                val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
+                                if (bitmap != null) {
+                                    repository.addImage(bitmap, uri.toString())
+                                    Log.d(TAG, "Captured image via accessibility")
+                                    return@launch
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // Reduced noise for expected errors (private providers)
+                            Log.w(TAG, "Could not access image provider via accessibility: ${e.message}")
+                        }
+                    }
+                    return // Image handled
+                }
+            }
+
+            // Priority 2: Text
+            if (text.isNotBlank() && text != lastClipText) {
                 lastClipText = text
-
                 serviceScope.launch {
                     repository.addText(text)
                     Log.d(TAG, "Captured text via accessibility: ${text.take(50)}...")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking clipboard", e)
+            Log.e(TAG, "Error checking clipboard in accessibility", e)
         }
     }
 

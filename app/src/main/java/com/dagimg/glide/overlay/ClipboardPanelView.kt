@@ -16,7 +16,17 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +38,21 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,7 +77,8 @@ import com.dagimg.glide.data.ClipboardRepository
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
@@ -131,7 +154,7 @@ class ClipboardPanelView(
         val composeView =
             ComposeView(context).apply {
                 setContent {
-                    ClipboardPanelContent(
+                    clipboardPanelContent(
                         repository = repository,
                         onItemClick = { item -> copyToClipboard(item) },
                         onItemPin = { item -> togglePin(item) },
@@ -192,10 +215,24 @@ class ClipboardPanelView(
         performHapticFeedback()
 
         if (item.isImage && item.imagePath != null) {
-            // For images, we'd need to create a content URI via FileProvider
-            // For now, just show the path
-            val clip = ClipData.newPlainText("Glide", "[Image: ${item.imagePath}]")
-            clipboardManager.setPrimaryClip(clip)
+            try {
+                val file = File(item.imagePath)
+                if (file.exists()) {
+                    val uri =
+                        androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            "com.dagimg.glide.fileprovider",
+                            file,
+                        )
+
+                    val clip = ClipData.newUri(context.contentResolver, "Image", uri)
+                    clipboardManager.setPrimaryClip(clip)
+                }
+            } catch (e: Exception) {
+                // Fallback to text if file provider fails
+                val clip = ClipData.newPlainText("Glide", "[Image Missing]")
+                clipboardManager.setPrimaryClip(clip)
+            }
         } else if (item.text != null) {
             val clip = ClipData.newPlainText("Glide", item.text)
             clipboardManager.setPrimaryClip(clip)
@@ -236,7 +273,7 @@ class ClipboardPanelView(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ClipboardPanelContent(
+private fun clipboardPanelContent(
     repository: ClipboardRepository,
     onItemClick: (ClipboardEntity) -> Unit,
     onItemPin: (ClipboardEntity) -> Unit,
@@ -322,7 +359,7 @@ private fun ClipboardPanelContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(items, key = { it.id }) { item ->
-                    ClipboardItemCard(
+                    clipboardItemCard(
                         item = item,
                         onClick = { onItemClick(item) },
                         onPin = { onItemPin(item) },
@@ -339,7 +376,7 @@ private fun ClipboardPanelContent(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ClipboardItemCard(
+private fun clipboardItemCard(
     item: ClipboardEntity,
     onClick: () -> Unit,
     onPin: () -> Unit,

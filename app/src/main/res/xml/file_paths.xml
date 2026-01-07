@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Expose the internal 'clipboard_images' directory -->
+    <files-path name="clipboard_images" path="clipboard_images/" />
+</paths>

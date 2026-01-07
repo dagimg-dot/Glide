@@ -14,15 +14,43 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +63,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.dagimg.glide.service.ClipboardService
 import com.dagimg.glide.service.GlideAccessibilityService
-import com.dagimg.glide.ui.theme.GlideTheme
+import com.dagimg.glide.ui.theme.glideTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -73,7 +101,7 @@ class MainActivity : ComponentActivity() {
         isServiceEnabled = prefs.getBoolean("service_enabled", false)
 
         setContent {
-            GlideTheme {
+            glideTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
@@ -85,7 +113,7 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                     ) { paddingValues ->
                         Box(modifier = Modifier.padding(paddingValues)) {
-                            MainScreen(
+                            mainScreen(
                                 isEnabled = isServiceEnabled,
                                 hasOverlayPermission = hasOverlayPermission,
                                 hasAccessibilityPermission = hasAccessibilityPermission,
@@ -175,7 +203,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(
+fun mainScreen(
     isEnabled: Boolean,
     hasOverlayPermission: Boolean,
     hasAccessibilityPermission: Boolean,
@@ -278,7 +306,7 @@ fun MainScreen(
         )
 
         // Overlay Permission
-        PermissionCard(
+        permissionCard(
             title = "Display Over Apps",
             description = "Required to show the edge panel",
             isGranted = hasOverlayPermission,
@@ -288,7 +316,7 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Accessibility Permission
-        PermissionCard(
+        permissionCard(
             title = "Accessibility Service",
             description = "Required for clipboard monitoring on Android 10+",
             isGranted = hasAccessibilityPermission,
@@ -299,7 +327,7 @@ fun MainScreen(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            PermissionCard(
+            permissionCard(
                 title = "Notifications",
                 description = "Show service running notification",
                 isGranted = hasNotificationPermission,
@@ -357,7 +385,7 @@ fun MainScreen(
 }
 
 @Composable
-fun PermissionCard(
+fun permissionCard(
     title: String,
     description: String,
     isGranted: Boolean,
