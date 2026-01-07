@@ -10,3 +10,10 @@ Glide is an intuitive edge panel for Android that streamlines your mobile experi
 
 - **Global Toggle**: to enable and disable glide
 - **Clipboard with Text and Image Support**: A clipboard manager that captures and previews both text snippets and images, keeping your most important data just a swipe away.
+
+## Preview
+
+<p align="center">
+  <img src="assets/preview_1.png" alt="Glide Preview" width="200">
+  <img src="assets/preview_2.png" alt="Glide Preview" width="200">
+</p>
